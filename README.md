@@ -1,0 +1,2 @@
+This is an automatic method for determining time/sample location of systolic peak in Photoplethysmography (PPG) signals. The method consists of four major steps: First order derivative filtering, nonlinear peak amplification, peak finding scheme, and peak position adjustment procedure. 
+The method is tested and validated using the standard MIT-BIH Polysomnographic database containing a wide range of PPG signals
