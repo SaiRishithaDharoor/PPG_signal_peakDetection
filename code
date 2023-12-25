@@ -1,0 +1,120 @@
+
+import numpy as np
+import scipy.signal as sig
+import matplotlib.pyplot as plt
+
+# Load ppg signal
+ppg = np.loadtxt('Vsamples.txt')
+
+# I) PREPROCESSING STAGE
+#1) Apply derivative filter to PPG data
+derivative=[0]*len(ppg) 
+for i in range(2, len(ppg)-1):
+    derivative[i]=(ppg[i]-ppg[i-2])*0.001
+    
+#2) Nonlinear peak amplification
+#squaring
+derivative_squared=np.abs(derivative)**2
+
+#3) finding shannon energy envelope
+shannon_energy_envelope=-1*derivative_squared*np.log(0.001+derivative_squared)
+   
+#4) smoothing shannon energy envelope
+window_size=50
+window=np.ones(window_size)/window_size
+smoothed_shannon_energy=sig.filtfilt(window,1,shannon_energy_envelope)
+
+
+#II) PEAK FINDING LOGIC OF SMOOTHENED ENERGY ENVELOPE
+#1)threshold
+threshold=np.max(smoothed_shannon_energy)*0.2
+
+#2)Adaptive thresholding
+sys_peaks =[0]*len(ppg)
+for i in range(1, len(ppg)-1):
+    if smoothed_shannon_energy[i] > threshold:
+        sys_peaks[i]=smoothed_shannon_energy[i] 
+    else :
+        sys_peaks[i]=0
+
+#3) finding peaks of thresholded smoothed shannon energy envelope
+d_smoothened_shannon_energy_envelope =np.gradient(sys_peaks)
+
+sys_peaks_points = []
+for i in range(1, len(ppg)-1):
+    if d_smoothened_shannon_energy_envelope[i-1] > 0 and d_smoothened_shannon_energy_envelope[i] < 0:
+        sys_peaks_points.append(i)
+        
+
+
+plt.plot(ppg, label='ppg signal')
+plt.xlabel('Sample number')
+plt.ylabel('Amplitude')
+plt.legend()
+plt.show()
+plt.plot(derivative, label='derivative of ppg signal')
+plt.xlabel('Sample number')
+plt.ylabel('Amplitude')
+plt.legend()
+plt.show()
+plt.plot(derivative_squared,'g', label='non-linear peak amplified signal')
+plt.xlabel('Sample number')
+plt.ylabel('Amplitude')
+plt.legend()
+plt.show()
+plt.plot(shannon_energy_envelope,'r', label='shannon energy envelope')
+plt.xlabel('Sample number')
+plt.ylabel('Amplitude')
+plt.legend()
+plt.show()
+plt.plot(smoothed_shannon_energy,'b', label='smoothed_shannon_energy')
+plt.xlabel('Sample number')
+plt.ylabel('Amplitude')
+plt.legend()
+plt.show()
+plt.plot(d_smoothened_shannon_energy_envelope, label='d_smoothened_shannon_energy_envelope')
+plt.xlabel('Sample number')
+plt.ylabel('Amplitude')
+plt.legend()
+plt.show()
+plt.plot(smoothed_shannon_energy, label='smoothed_shannon_energy')
+plt.plot(sys_peaks, label='thresholded smoothed shannon energy')
+plt.plot(np.array(sys_peaks_points),np.array(smoothed_shannon_energy[sys_peaks_points]),'ro', label='systolic-peaks')
+plt.xlabel('Sample number')
+plt.ylabel('Amplitude')
+plt.legend()
+plt.show()
+
+
+#III) FINDING PEAK OF PPG SIGNAL
+plt.plot(ppg, label = 'PPG signal')
+x = np.array(sys_peaks_points)
+y = np.array(smoothed_shannon_energy[x])
+plt.plot(x, np.array(ppg[x]), 'ro', label='approx location')
+plt.xlabel('Sample number')
+plt.ylabel('Amplitude')
+plt.legend()
+plt.show()
+print('approximate peak samples',x)
+
+#IV) PEAK LOCATION ADJUSTMENT
+# Initialize an empty list to store the refined peak locations 
+true_peak_locs = [] 
+# Loop through each approximate peak location 
+for approx_peak_loc in x:
+# Define the window around the approximate peak location 
+ window_start = max(0, approx_peak_loc - window_size) 
+ window_end = min(len(ppg), approx_peak_loc + window_size + 1) 
+ window = ppg[window_start:window_end] 
+ # Find the location of the maximum peak within the window 
+ max_peak_loc = window_start + np.argmax(window) 
+ # Add the refined peak location to the list 
+ true_peak_locs.append(max_peak_loc) 
+# Print the refined peak locations 
+print('true peak samples',true_peak_locs)
+plt.plot(ppg, label = 'PPG signal')
+plt.plot(true_peak_locs, np.array(ppg[true_peak_locs]), 'ro', label='true peak location')
+plt.xlabel('Sample number')
+plt.ylabel('Amplitude')
+plt.legend()
+plt.show()
